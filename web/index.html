@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Umbrella VPN</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --bg: #0f1117;
@@ -90,9 +97,20 @@
       font-weight: 500;
     }
 
-    .badge-green { background: var(--green-bg); color: var(--green); }
-    .badge-red { background: var(--red-bg); color: var(--red); }
-    .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+    .badge-green {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .badge-red {
+      background: var(--red-bg);
+      color: var(--red);
+    }
+
+    .badge-yellow {
+      background: var(--yellow-bg);
+      color: var(--yellow);
+    }
 
     .badge .dot {
       width: 8px;
@@ -101,10 +119,20 @@
       background: currentColor;
     }
 
-    .badge-green .dot { animation: pulse 2s infinite; }
+    .badge-green .dot {
+      animation: pulse 2s infinite;
+    }
+
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
     }
 
     /* Stats grid */
@@ -152,14 +180,20 @@
       color: #fff;
       width: 100%;
     }
-    .btn-connect:hover:not(:disabled) { background: #16a34a; }
+
+    .btn-connect:hover:not(:disabled) {
+      background: #16a34a;
+    }
 
     .btn-disconnect {
       background: var(--red);
       color: #fff;
       width: 100%;
     }
-    .btn-disconnect:hover:not(:disabled) { background: #dc2626; }
+
+    .btn-disconnect:hover:not(:disabled) {
+      background: #dc2626;
+    }
 
     /* Textarea */
     textarea {
@@ -191,7 +225,10 @@
       color: #fff;
       width: 100%;
     }
-    .btn-save:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-save:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
 
     /* Toggle switch */
     .toggle-row {
@@ -201,7 +238,7 @@
       padding: 8px 0;
     }
 
-    .toggle-row + .toggle-row {
+    .toggle-row+.toggle-row {
       border-top: 1px solid var(--border);
       margin-top: 8px;
       padding-top: 16px;
@@ -252,8 +289,13 @@
       transition: transform 0.2s;
     }
 
-    .switch input:checked + .slider { background: var(--accent); }
-    .switch input:checked + .slider::before { transform: translateX(20px); }
+    .switch input:checked+.slider {
+      background: var(--accent);
+    }
+
+    .switch input:checked+.slider::before {
+      transform: translateX(20px);
+    }
 
     /* Toast */
     .toast {
@@ -285,7 +327,7 @@
     .spinner {
       width: 16px;
       height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
+      border: 2px solid rgba(255, 255, 255, 0.3);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
@@ -293,7 +335,11 @@
       margin-right: 8px;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     .hint {
       font-size: 0.75rem;
@@ -307,9 +353,12 @@
       text-decoration: none;
     }
 
-    .hint a:hover { text-decoration: underline; }
+    .hint a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -355,15 +404,9 @@
     <div class="card">
       <div class="card-title">WireGuard Configuration</div>
       <p class="hint">
-        Generate a config at
-        <a href="https://account.proton.me/u/0/vpn/WireGuard" target="_blank" rel="noopener">
-          account.proton.me &rarr; VPN &rarr; WireGuard
-        </a>
-        and paste it below.
+        Copy your WireGuard configuration and paste it below.
       </p>
-      <textarea
-        id="config"
-        placeholder="[Interface]
+      <textarea id="config" placeholder="[Interface]
 PrivateKey = ...
 Address = 10.2.0.2/32
 DNS = 10.2.0.1
@@ -371,9 +414,7 @@ DNS = 10.2.0.1
 [Peer]
 PublicKey = ...
 AllowedIPs = 0.0.0.0/0
-Endpoint = ..."
-        spellcheck="false"
-      ></textarea>
+Endpoint = ..." spellcheck="false"></textarea>
       <button class="btn btn-save" onclick="saveConfig()">Save Configuration</button>
     </div>
 
@@ -529,4 +570,5 @@ Endpoint = ..."
     polling = setInterval(refreshStatus, 5000);
   </script>
 </body>
+
 </html>

@@ -8,6 +8,8 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 const CONFIG_PATH = path.join(DATA_DIR, 'wg0.conf');
 const SETTINGS_PATH = path.join(DATA_DIR, 'settings.json');
 const WG_CONF = '/etc/wireguard/wg0.conf';
+const RESOLV_CONF = '/etc/resolv.conf';
+const RESOLV_BACKUP = path.join(DATA_DIR, 'resolv.conf.bak');
 
 const LAN_SUBNETS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 const IPTABLES_COMMENT = 'umbrella-vpn';
@@ -60,12 +62,82 @@ function isConnected() {
   }
 }
 
-function patchConfigForLan(configText) {
-  // ProtonVPN configs use AllowedIPs = 0.0.0.0/0 which captures everything.
-  // We don't modify AllowedIPs here — instead we add explicit routes for LAN
-  // subnets *after* wg-quick sets up the interface, so LAN traffic bypasses
-  // the tunnel via higher-priority routes.
-  return configText;
+function extractDnsServers(configText) {
+  // Only look at lines inside the [Interface] section. wg-quick's DNS=
+  // directive is interface-scoped.
+  const lines = configText.split(/\r?\n/);
+  let inInterface = false;
+  const servers = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[')) {
+      inInterface = trimmed.toLowerCase() === '[interface]';
+      continue;
+    }
+    if (!inInterface) continue;
+    const m = trimmed.match(/^DNS\s*=\s*(.+)$/i);
+    if (m) {
+      for (const entry of m[1].split(',')) {
+        const value = entry.trim();
+        // Skip search-domain entries; only keep IPv4/IPv6 nameservers.
+        if (value && /^[0-9a-fA-F:.]+$/.test(value)) {
+          servers.push(value);
+        }
+      }
+    }
+  }
+  return servers;
+}
+
+function stripDnsLine(configText) {
+  // Remove DNS= lines so wg-quick doesn't invoke resolvconf inside the
+  // container. Docker bind-mounts /etc/resolv.conf and openresolv refuses
+  // to update it ("signature mismatch"), which causes wg-quick to bail
+  // and tear wg0 back down.
+  const lines = configText.split(/\r?\n/);
+  let inInterface = false;
+  const out = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[')) {
+      inInterface = trimmed.toLowerCase() === '[interface]';
+      out.push(line);
+      continue;
+    }
+    if (inInterface && /^\s*DNS\s*=/i.test(line)) continue;
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
+function applyDns(servers) {
+  if (!servers.length) return;
+  try {
+    if (!fs.existsSync(RESOLV_BACKUP) && fs.existsSync(RESOLV_CONF)) {
+      fs.copyFileSync(RESOLV_CONF, RESOLV_BACKUP);
+    }
+    const content =
+      '# Managed by umbrella-vpn\n' +
+      servers.map((s) => `nameserver ${s}`).join('\n') +
+      '\n';
+    // Write in-place: /etc/resolv.conf is a Docker bind mount, so we can
+    // truncate+rewrite its contents but must not replace the inode.
+    fs.writeFileSync(RESOLV_CONF, content);
+  } catch (err) {
+    console.error('Failed to apply DNS:', err.message);
+  }
+}
+
+function restoreDns() {
+  try {
+    if (fs.existsSync(RESOLV_BACKUP)) {
+      const content = fs.readFileSync(RESOLV_BACKUP, 'utf8');
+      fs.writeFileSync(RESOLV_CONF, content);
+      fs.unlinkSync(RESOLV_BACKUP);
+    }
+  } catch (err) {
+    console.error('Failed to restore DNS:', err.message);
+  }
 }
 
 function installLanRoutes() {
@@ -195,7 +267,8 @@ async function connect() {
   }
 
   const configText = fs.readFileSync(CONFIG_PATH, 'utf8');
-  const patched = patchConfigForLan(configText);
+  const dnsServers = extractDnsServers(configText);
+  const patched = stripDnsLine(configText);
   fs.mkdirSync('/etc/wireguard', { recursive: true });
   fs.writeFileSync(WG_CONF, patched);
 
@@ -205,6 +278,7 @@ async function connect() {
     return { success: false, message: `wg-quick failed: ${err.message}` };
   }
 
+  applyDns(dnsServers);
   installLanRoutes();
 
   const settings = loadSettings();
@@ -219,6 +293,7 @@ async function disconnect() {
   disableKillSwitch();
 
   if (!isConnected()) {
+    restoreDns();
     return { success: true, message: 'Already disconnected' };
   }
 
@@ -227,6 +302,8 @@ async function disconnect() {
   } catch (err) {
     return { success: false, message: `wg-quick down failed: ${err.message}` };
   }
+
+  restoreDns();
 
   return { success: true, message: 'Disconnected' };
 }
