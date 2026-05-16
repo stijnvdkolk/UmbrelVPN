@@ -8,12 +8,16 @@ const PORT = Number.parseInt(process.env.PORT || '3080', 10);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'web')));
 
+function sendError(res, err) {
+  const status = err.statusCode || 500;
+  res.status(status).json({ error: err.message || 'Internal server error' });
+}
+
 app.get('/api/status', async (_req, res) => {
   try {
-    const status = await vpn.getStatus();
-    res.json(status);
+    res.json(await vpn.getStatus());
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -24,37 +28,33 @@ app.post('/api/config', (req, res) => {
   }
 
   if (!config.includes('[Interface]') || !config.includes('[Peer]')) {
-    return res
-      .status(400)
-      .json({
-        error:
-          'Invalid WireGuard configuration — must contain [Interface] and [Peer] sections',
-      });
+    return res.status(400).json({
+      error:
+        'Invalid WireGuard configuration — must contain [Interface] and [Peer] sections',
+    });
   }
 
   try {
     vpn.saveConfig(config);
-    res.json({ success: true });
+    res.json({ message: 'Configuration saved' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
 app.post('/api/connect', async (_req, res) => {
   try {
-    const result = await vpn.connect();
-    res.json(result);
+    res.json(await vpn.connect());
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 });
 
 app.post('/api/disconnect', async (_req, res) => {
   try {
-    const result = await vpn.disconnect();
-    res.json(result);
+    res.json(await vpn.disconnect());
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 });
 
@@ -62,7 +62,7 @@ app.get('/api/settings', (_req, res) => {
   try {
     res.json(vpn.loadSettings());
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -78,7 +78,7 @@ app.post('/api/settings', (req, res) => {
 
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 

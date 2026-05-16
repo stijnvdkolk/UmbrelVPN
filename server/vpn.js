@@ -14,6 +14,12 @@ const RESOLV_BACKUP = path.join(DATA_DIR, 'resolv.conf.bak');
 const LAN_SUBNETS = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 const IPTABLES_COMMENT = 'umbrella-vpn';
 
+function httpError(statusCode, message) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  return err;
+}
+
 function run(cmd) {
   try {
     return execSync(cmd, { encoding: 'utf8', timeout: 15_000 }).trim();
@@ -90,10 +96,6 @@ function extractDnsServers(configText) {
 }
 
 function stripDnsLine(configText) {
-  // Remove DNS= lines so wg-quick doesn't invoke resolvconf inside the
-  // container. Docker bind-mounts /etc/resolv.conf and openresolv refuses
-  // to update it ("signature mismatch"), which causes wg-quick to bail
-  // and tear wg0 back down.
   const lines = configText.split(/\r?\n/);
   let inInterface = false;
   const out = [];
@@ -120,8 +122,6 @@ function applyDns(servers) {
       '# Managed by umbrella-vpn\n' +
       servers.map((s) => `nameserver ${s}`).join('\n') +
       '\n';
-    // Write in-place: /etc/resolv.conf is a Docker bind mount, so we can
-    // truncate+rewrite its contents but must not replace the inode.
     fs.writeFileSync(RESOLV_CONF, content);
   } catch (err) {
     console.error('Failed to apply DNS:', err.message);
@@ -141,13 +141,8 @@ function restoreDns() {
 }
 
 function installLanRoutes() {
-  // Detect the default gateway *before* wg-quick may have changed it.
-  // wg-quick with AllowedIPs = 0.0.0.0/0 replaces the default route,
-  // but the original gateway is still reachable via the main table.
-  // We look for the original default route or fall back to a common pattern.
   let gateway, device;
   try {
-    // After wg-quick, the original default route is moved to table 51820
     const mainRoute = run(
       'ip route show default table main 2>/dev/null || ip route show default',
     );
@@ -161,7 +156,6 @@ function installLanRoutes() {
   }
 
   if (!gateway) {
-    // Fallback: scan all tables for the original default route
     try {
       const allRoutes = run(
         "ip route show table all | grep 'default via' | grep -v wg0 | head -1",
@@ -171,9 +165,7 @@ function installLanRoutes() {
         gateway = match[1];
         device = match[2];
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   if (!gateway) return;
@@ -259,11 +251,11 @@ function disableKillSwitch() {
 
 async function connect() {
   if (isConnected()) {
-    return { success: true, message: 'Already connected' };
+    return { message: 'Already connected' };
   }
 
   if (!hasConfig()) {
-    return { success: false, message: 'No WireGuard configuration found' };
+    throw httpError(409, 'No WireGuard configuration found');
   }
 
   const configText = fs.readFileSync(CONFIG_PATH, 'utf8');
@@ -275,7 +267,7 @@ async function connect() {
   try {
     run('wg-quick up wg0');
   } catch (err) {
-    return { success: false, message: `wg-quick failed: ${err.message}` };
+    throw httpError(502, `wg-quick failed: ${err.message}`);
   }
 
   applyDns(dnsServers);
@@ -286,7 +278,7 @@ async function connect() {
     enableKillSwitch();
   }
 
-  return { success: true, message: 'Connected' };
+  return { message: 'Connected' };
 }
 
 async function disconnect() {
@@ -294,18 +286,18 @@ async function disconnect() {
 
   if (!isConnected()) {
     restoreDns();
-    return { success: true, message: 'Already disconnected' };
+    return { message: 'Already disconnected' };
   }
 
   try {
     run('wg-quick down wg0');
   } catch (err) {
-    return { success: false, message: `wg-quick down failed: ${err.message}` };
+    throw httpError(502, `wg-quick down failed: ${err.message}`);
   }
 
   restoreDns();
 
-  return { success: true, message: 'Disconnected' };
+  return { message: 'Disconnected' };
 }
 
 function getPublicIp() {

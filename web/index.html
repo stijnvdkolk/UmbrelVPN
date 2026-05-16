@@ -469,7 +469,13 @@ Endpoint = ..." spellcheck="false"></textarea>
         headers: { "Content-Type": "application/json" },
         ...opts,
       });
-      return res.json();
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(body.error || `HTTP ${res.status}`);
+        err.statusCode = res.status;
+        throw err;
+      }
+      return body;
     }
 
     async function refreshStatus() {
@@ -516,13 +522,9 @@ Endpoint = ..." spellcheck="false"></textarea>
 
       try {
         const res = await api("/" + action, { method: "POST" });
-        if (res.success) {
-          showToast(res.message);
-        } else {
-          showToast(res.message, true);
-        }
+        showToast(res.message || "OK");
       } catch (err) {
-        showToast("Request failed", true);
+        showToast(err.message, true);
       }
 
       setTimeout(refreshStatus, 1000);
@@ -540,14 +542,10 @@ Endpoint = ..." spellcheck="false"></textarea>
           method: "POST",
           body: JSON.stringify({ config }),
         });
-        if (res.success) {
-          showToast("Configuration saved");
-          refreshStatus();
-        } else {
-          showToast(res.error, true);
-        }
-      } catch {
-        showToast("Failed to save", true);
+        showToast(res.message || "Configuration saved");
+        refreshStatus();
+      } catch (err) {
+        showToast(err.message, true);
       }
     }
 
@@ -561,8 +559,8 @@ Endpoint = ..." spellcheck="false"></textarea>
           body: JSON.stringify({ autoConnect, killSwitch }),
         });
         showToast("Settings updated");
-      } catch {
-        showToast("Failed to update settings", true);
+      } catch (err) {
+        showToast(err.message || "Failed to update settings", true);
       }
     }
 
