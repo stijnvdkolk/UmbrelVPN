@@ -9,8 +9,6 @@ services:
       - NET_RAW
     devices:
       - /dev/net/tun:/dev/net/tun
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
     environment:
       PORT: "3080"
       DATA_DIR: "/data"
