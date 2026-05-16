@@ -1,0 +1,9 @@
+node_modules
+.git
+.gitignore
+.github
+umbrella-vpn
+umbrel-app-store.yml
+README.md
+.DS_Store
+*.log

@@ -1,0 +1,20 @@
+version: "3.7"
+
+services:
+  server:
+    image: ghcr.io/stijnvdkolk/umbrella-vpn:latest
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    environment:
+      PORT: "3080"
+      DATA_DIR: "/data"
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+    restart: on-failure
+    stop_grace_period: 30s

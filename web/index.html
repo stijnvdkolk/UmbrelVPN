@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Umbrella VPN</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-hover: #222531;
+      --border: #2a2d3a;
+      --text: #e4e4e7;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.1);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.1);
+      --yellow: #eab308;
+      --yellow-bg: rgba(234, 179, 8, 0.1);
+      --radius: 12px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* Status badge */
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.813rem;
+      font-weight: 500;
+    }
+
+    .badge-green { background: var(--green-bg); color: var(--green); }
+    .badge-red { background: var(--red-bg); color: var(--red); }
+    .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+
+    .badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .badge-green .dot { animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 0.938rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      word-break: break-all;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-family: var(--font);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-connect {
+      background: var(--green);
+      color: #fff;
+      width: 100%;
+    }
+    .btn-connect:hover:not(:disabled) { background: #16a34a; }
+
+    .btn-disconnect {
+      background: var(--red);
+      color: #fff;
+      width: 100%;
+    }
+    .btn-disconnect:hover:not(:disabled) { background: #dc2626; }
+
+    /* Textarea */
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 0.813rem;
+      resize: vertical;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-save {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+    }
+    .btn-save:hover:not(:disabled) { background: var(--accent-hover); }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+
+    .toggle-row + .toggle-row {
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+      padding-top: 16px;
+    }
+
+    .toggle-label {
+      font-size: 0.875rem;
+    }
+
+    .toggle-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      margin-left: 16px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--border);
+      border-radius: 999px;
+      transition: background 0.2s;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--text);
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(20px); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      transition: transform 0.3s ease;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .hint a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .hint a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Umbrella VPN</h1>
+      <p>WireGuard VPN gateway for your Umbrel</p>
+    </header>
+
+    <!-- Status card -->
+    <div class="card">
+      <div class="status-row">
+        <div class="card-title" style="margin-bottom:0">Status</div>
+        <div id="badge" class="badge badge-red">
+          <span class="dot"></span>
+          <span id="badge-text">Disconnected</span>
+        </div>
+      </div>
+      <div class="stats">
+        <div>
+          <div class="stat-label">Public IP</div>
+          <div class="stat-value" id="public-ip">—</div>
+        </div>
+        <div>
+          <div class="stat-label">Server</div>
+          <div class="stat-value" id="endpoint">—</div>
+        </div>
+        <div>
+          <div class="stat-label">Received</div>
+          <div class="stat-value" id="rx">—</div>
+        </div>
+        <div>
+          <div class="stat-label">Sent</div>
+          <div class="stat-value" id="tx">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connect/Disconnect -->
+    <div class="card" id="control-card">
+      <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">Connect</button>
+    </div>
+
+    <!-- Configuration -->
+    <div class="card">
+      <div class="card-title">WireGuard Configuration</div>
+      <p class="hint">
+        Generate a config at
+        <a href="https://account.proton.me/u/0/vpn/WireGuard" target="_blank" rel="noopener">
+          account.proton.me &rarr; VPN &rarr; WireGuard
+        </a>
+        and paste it below.
+      </p>
+      <textarea
+        id="config"
+        placeholder="[Interface]
+PrivateKey = ...
+Address = 10.2.0.2/32
+DNS = 10.2.0.1
+
+[Peer]
+PublicKey = ...
+AllowedIPs = 0.0.0.0/0
+Endpoint = ..."
+        spellcheck="false"
+      ></textarea>
+      <button class="btn btn-save" onclick="saveConfig()">Save Configuration</button>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+      <div class="card-title">Settings</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Auto-connect</div>
+          <div class="toggle-desc">Reconnect VPN when Umbrel restarts</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="auto-connect" onchange="updateSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Kill switch</div>
+          <div class="toggle-desc">Block internet if VPN drops</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="kill-switch" onchange="updateSettings()">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let polling = null;
+    let currentlyConnected = false;
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(1) + " " + units[i];
+    }
+
+    function showToast(msg, isError) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.className = "toast visible" + (isError ? " error" : "");
+      setTimeout(() => el.classList.remove("visible"), 3000);
+    }
+
+    async function api(path, opts) {
+      const res = await fetch("/api" + path, {
+        headers: { "Content-Type": "application/json" },
+        ...opts,
+      });
+      return res.json();
+    }
+
+    async function refreshStatus() {
+      try {
+        const s = await api("/status");
+        currentlyConnected = s.connected;
+
+        const badge = document.getElementById("badge");
+        const badgeText = document.getElementById("badge-text");
+        const btn = document.getElementById("btn-connect");
+
+        if (s.connected) {
+          badge.className = "badge badge-green";
+          badgeText.textContent = "Connected";
+          btn.className = "btn btn-disconnect";
+          btn.textContent = "Disconnect";
+        } else {
+          badge.className = "badge badge-red";
+          badgeText.textContent = "Disconnected";
+          btn.className = "btn btn-connect";
+          btn.textContent = s.hasConfig ? "Connect" : "Save config first";
+          btn.disabled = !s.hasConfig;
+        }
+
+        document.getElementById("public-ip").textContent = s.publicIp || "—";
+        document.getElementById("endpoint").textContent = s.stats?.endpoint || "—";
+        document.getElementById("rx").textContent = s.stats ? formatBytes(s.stats.transferRx) : "—";
+        document.getElementById("tx").textContent = s.stats ? formatBytes(s.stats.transferTx) : "—";
+
+        if (s.settings) {
+          document.getElementById("auto-connect").checked = !!s.settings.autoConnect;
+          document.getElementById("kill-switch").checked = !!s.settings.killSwitch;
+        }
+      } catch {
+        // network error — likely VPN transition
+      }
+    }
+
+    async function toggleConnection() {
+      const btn = document.getElementById("btn-connect");
+      const action = currentlyConnected ? "disconnect" : "connect";
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>' + (action === "connect" ? "Connecting..." : "Disconnecting...");
+
+      try {
+        const res = await api("/" + action, { method: "POST" });
+        if (res.success) {
+          showToast(res.message);
+        } else {
+          showToast(res.message, true);
+        }
+      } catch (err) {
+        showToast("Request failed", true);
+      }
+
+      setTimeout(refreshStatus, 1000);
+    }
+
+    async function saveConfig() {
+      const config = document.getElementById("config").value.trim();
+      if (!config) {
+        showToast("Paste a WireGuard configuration first", true);
+        return;
+      }
+
+      try {
+        const res = await api("/config", {
+          method: "POST",
+          body: JSON.stringify({ config }),
+        });
+        if (res.success) {
+          showToast("Configuration saved");
+          refreshStatus();
+        } else {
+          showToast(res.error, true);
+        }
+      } catch {
+        showToast("Failed to save", true);
+      }
+    }
+
+    async function updateSettings() {
+      const autoConnect = document.getElementById("auto-connect").checked;
+      const killSwitch = document.getElementById("kill-switch").checked;
+
+      try {
+        await api("/settings", {
+          method: "POST",
+          body: JSON.stringify({ autoConnect, killSwitch }),
+        });
+        showToast("Settings updated");
+      } catch {
+        showToast("Failed to update settings", true);
+      }
+    }
+
+    refreshStatus();
+    polling = setInterval(refreshStatus, 5000);
+  </script>
+</body>
+</html>

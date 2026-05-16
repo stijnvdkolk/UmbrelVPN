@@ -1,0 +1,29 @@
+manifestVersion: 1
+id: umbrella-vpn
+category: networking
+name: 'Umbrella VPN'
+version: '1.0.0'
+tagline: 'Route all Umbrel traffic through your VPN'
+description: >-
+  Umbrella VPN lets you route all network traffic on your Umbrel Home through
+  a WireGuard VPN tunnel. Simply paste your VPN provider's WireGuard
+  configuration and hit connect.
+
+
+  The app runs a WireGuard tunnel at the host level so every container and
+  service on your Umbrel benefits from the encrypted connection. Local network
+  access is preserved so you can always reach your Umbrel dashboard and SSH.
+
+
+  Features include a kill switch that blocks internet access if the VPN drops,
+  auto-connect on boot, and a clean status dashboard showing your public IP
+  and connection health.
+developer: 'Umbrella VPN'
+website: 'https://github.com/stijnvdkolk/UmbrelVPN'
+repo: 'https://github.com/stijnvdkolk/UmbrelVPN'
+support: 'https://github.com/stijnvdkolk/UmbrelVPN/issues'
+port: 3080
+gallery:
+  - 1.jpg
+releaseNotes: >-
+  Initial release with WireGuard support, kill switch, and auto-connect.
